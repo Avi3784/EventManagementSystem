@@ -80,7 +80,8 @@
     {% block links %}
     {% endblock %}
 
-   
+    <!-- Leaflet CSS and JS -->
+    <!-- (Map removed) -->
 </head>
 <body class="">
 {#<body class="mini-sidebar">#}
@@ -164,7 +165,7 @@
                                 <li> <a href="{% url "dashboard" %}">  <span> Admin Dashboard </span></a> </li>
                                 <li> <a href="{% url "addevent" %}">  <span> Add Events </span></a> </li>
                                 <li><a href="{% url "viewevent" %}"> <span> View Events </span></a> </li>
-                                <li><a href="{% url "vendor" %}"> <span> View Vendors </span></a> </li>
+                                <li><a href="{% url "sponsor" %}"> <span> View Sponsors </span></a> </li>
                                 <li><a href="{% url "add_volunteer" %}"> <span> Add Volunteers </span></a> </li>
                                 <li><a href="{% url "view_volunteers" %}"> <span> View Volunteers </span></a> </li>
                             </ul>
@@ -180,7 +181,7 @@
                         <li class="submenu">
                             <a href=""><i class="la la-user"></i> <span> Tech Support</span> <span class="menu-arrow"></span></a>
                             <ul style="display: none;">
-                                <li><a href=""><i class="la la-phone"></i><span style="font-size: 15px;"> +918121004348</span></a></li>
+                                <li><a href="tel:+918400776701"><i class="la la-phone"></i><span style="font-size: 15px;"> +918400776701</span></a></li>
                             </ul>
                     </ul>
                 </div>
@@ -194,7 +195,7 @@
             <div class="content container-fluid px-2 pt-2">
                 {% block content %}
                 {% endblock %}
-                    <p class="card text-center p-2 text-muted fixed-bottom position-absolute mb-0" style="border-radius: 0;z-index: 999">copyright © {% now 'Y' %} | Version 1.1 </p>
+                    <!-- copyright line removed per request -->
             </div>
             <!-- /Page Content -->
         </div>
@@ -254,7 +255,7 @@
             {% else %}
             swal("Failed!", "{{ message }}", "warning");
             {% endif %}
-        {% endfor %}
+        {% endfor %}
     </script>
    
 </body>

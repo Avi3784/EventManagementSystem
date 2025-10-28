@@ -60,26 +60,86 @@
     
     <div class="text-center mx-auto" style="font-size: 25px; margin-top: 20px;">
         {% if payment %}
-        <form action="/" method="POST">
-          <script
-          src="https://checkout.razorpay.com/v1/checkout.js"
-          data-key="rzp_test_LeNsJ6Ge3PhMAU"
-          data-amount="{{payment.amount}}"
-          data-currency="INR"
-          data-order-id="{{payment.id}}"
-          data-buttontext="Pay With razorpay"
-          data-name="Nug Events"
-          data-description="Test Transaction"
-          data-prefil.name="{{booking.name}}"
-          data-prefil.email="demomail@gmail.com"
-          data-prefil.contact="{{booking.contact_number}}"
-          data-theme.color="#f37254"
-          ></script>
-          <input type="hidden" custom="Hidden Element" name="hidden">
-        </form>
-        
-        {% endif %}
+        <div class="mb-3">
+            <!-- Razorpay checkout widget (unchanged) -->
+            <form action="/" method="POST">
+              <script
+              src="https://checkout.razorpay.com/v1/checkout.js"
+              data-key="{{ RAZORPAY_API_KEY }}"
+              data-amount="{{payment.amount}}"
+              data-currency="INR"
+              data-order-id="{{payment.id}}"
+              data-buttontext="Pay With Razorpay"
+              data-name="Nug Events"
+              data-description="Event Payment"
+              data-prefil.name="{{booking.name}}"
+              data-prefil.email="{{booking.email}}"
+              data-prefil.contact="{{booking.contact_number}}"
+              data-theme.color="#f37254"
+              ></script>
+              <input type="hidden" custom="Hidden Element" name="hidden">
+            </form>
         </div>
+
+        <!-- UPI QR fallback / alternative -->
+        <div class="card mx-auto" style="max-width: 420px;">
+            <div class="card-body text-center">
+                <h5>Or pay via UPI</h5>
+                <p>Scan this QR with your UPI app or copy the UPI string below.</p>
+                <div id="qrcode" style="margin: 0 auto 10px; width:220px; height:220px;"></div>
+                <div class="input-group mb-2">
+                    <input type="text" id="upi-string" class="form-control" readonly>
+                    <div class="input-group-append">
+                        <button class="btn btn-outline-secondary" id="copy-upi">Copy</button>
+                    </div>
+                </div>
+                <small class="text-muted">UPI VPA: {{ UPI_VPA }} | Payee: {{ UPI_NAME }}</small>
+            </div>
+        </div>
+
+        {% endif %}
+    </div>
+    
+    <!-- QRCode.js (client-side) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script>
+        (function(){
+            // Only run when booking is available
+            var bookingAmount = {{ booking.total_cost|default:'0' }};
+            var bookingEventName = "{{ booking.event.event_name|default:''|escapejs }}";
+            var upiVpa = "{{ UPI_VPA|default:'' }}";
+            var upiName = "{{ UPI_NAME|default:'' }}";
+            var upiNote = "{{ UPI_NOTE|default:''|escapejs }}";
+            if (bookingAmount && upiVpa) {
+                // build UPI URI: upi://pay?pa=VPA&pn=Name&am=Amount&cu=INR&tn=Note
+                var amount = bookingAmount.toString();
+                var note = upiNote || bookingEventName || '';
+                var upi = 'upi://pay?pa=' + encodeURIComponent(upiVpa) + '&pn=' + encodeURIComponent(upiName) + '&am=' + encodeURIComponent(amount) + '&cu=INR&tn=' + encodeURIComponent(note);
+
+                document.getElementById('upi-string').value = upi;
+
+                // Generate QR
+                var qrcodeEl = document.getElementById('qrcode');
+                new QRCode(qrcodeEl, {
+                    text: upi,
+                    width: 220,
+                    height: 220,
+                    colorDark : '#000000',
+                    colorLight : '#ffffff',
+                });
+
+                // copy button
+                document.getElementById('copy-upi').addEventListener('click', function(e){
+                    e.preventDefault();
+                    navigator.clipboard.writeText(upi).then(function(){
+                        alert('UPI string copied to clipboard');
+                    }, function(){
+                        alert('Copy failed — please select and copy manually');
+                    });
+                });
+            }
+        })();
+    </script>
         
 </body>
 </html>

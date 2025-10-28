@@ -1,12 +1,12 @@
 from django.contrib import admin
-from .models import Vendor, Event,  Booking, UserProfile, Volunteer
+from .models import Sponsor, Event, Booking, UserProfile, Volunteer
 
 # Register your models here.
 admin.site.site_header = 'Custom Admin Header'
 
 
 
-admin.site.register(Vendor)
+admin.site.register(Sponsor)
 admin.site.register(Event)
 admin.site.register(Booking)
 admin.site.register(UserProfile)

@@ -1,7 +1,7 @@
 from django.db import models
 import uuid  # Import the uuid module
 
-class Vendor(models.Model):
+class Sponsor(models.Model):
     name = models.CharField(max_length=100)
     purpose = models.CharField(max_length=200)
     contact = models.CharField(max_length=100)
@@ -14,18 +14,44 @@ class Vendor(models.Model):
         return self.name
 
 class Event(models.Model):
+    CONFERENCE = 'CONFERENCE'
+    WORKSHOP = 'WORKSHOP'
+    SEMINAR = 'SEMINAR'
+    CULTURAL = 'CULTURAL'
+    SPORTS = 'SPORTS'
+    CONCERT = 'CONCERT'
+    EXHIBITION = 'EXHIBITION'
+    NETWORKING = 'NETWORKING'
+    OTHER = 'OTHER'
+    
+    EVENT_CATEGORIES = [
+        (CONFERENCE, 'Conference'),
+        (WORKSHOP, 'Workshop'),
+        (SEMINAR, 'Seminar'),
+        (CULTURAL, 'Cultural Event'),
+        (SPORTS, 'Sports Event'),
+        (CONCERT, 'Concert'),
+        (EXHIBITION, 'Exhibition'),
+        (NETWORKING, 'Networking Event'),
+        (OTHER, 'Other')
+    ]
+    
     event_name = models.CharField(max_length=200)
+    category = models.CharField(max_length=20, choices=EVENT_CATEGORIES, default='OTHER')
     organiser = models.CharField(max_length=100)
     time = models.TimeField()
     date = models.DateField()
     venue = models.CharField(max_length=200)
+    venue_latitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
+    venue_longitude = models.DecimalField(max_digits=9, decimal_places=6, null=True, blank=True)
     theme = models.CharField(max_length=200)
     total_tickets = models.IntegerField()
-    price_per_ticket = models.DecimalField(max_digits=10, decimal_places=2, default = 0)
-    vendors = models.ManyToManyField(Vendor)
-    status = models.BooleanField(default=True) 
-    description = models.CharField(max_length=250, default="Fun Activites Followed by Dinner, Bring Your Friends and Family along!", null=True)
-    free_ticket = models.BooleanField(default=False, null = True)  # New field for indicating if the ticket is free
+    price_per_ticket = models.DecimalField(max_digits=10, decimal_places=2, default=0)
+    sponsors = models.ManyToManyField(Sponsor)
+    status = models.BooleanField(default=True)
+    description = models.CharField(max_length=250, default="Fun Activities Followed by Dinner, Bring Your Friends and Family along!", null=True)
+    free_ticket = models.BooleanField(default=False, null=True)
+    group_discount = models.DecimalField(max_digits=5, decimal_places=2, default=0, help_text="Discount percentage for group bookings")
 
 
 
@@ -43,11 +69,17 @@ class Booking(models.Model):
     number_of_tickets = models.IntegerField()
     name = models.CharField(max_length=200)
     contact_number = models.CharField(max_length=15)
-    flat_number = models.CharField(max_length=50)
+    email = models.EmailField(max_length=254, null=True, default='')
     total_cost = models.DecimalField(max_digits=10, decimal_places=2)
     paid = models.BooleanField(default=False)
     payment_id = models.CharField(max_length=100, default='000')
-    ticket_id = models.CharField(max_length=5, unique=True)  # Unique ticket ID
+    ticket_id = models.CharField(max_length=5, unique=True)
+    booking_date = models.DateTimeField(auto_now_add=True, null=True)
+    
+    # Email reminder tracking
+    reminder_24h_sent = models.BooleanField(default=False)
+    reminder_2h_sent = models.BooleanField(default=False)
+    last_reminder_sent = models.DateTimeField(null=True, blank=True)
 
 
     
@@ -69,7 +101,6 @@ class Volunteer(models.Model):
     name = models.CharField(max_length=100, default="John Doe")
     contact_number = models.CharField(max_length=20, default="123-456-7890")
     email = models.EmailField(default="john.doe@example.com")
-    flat_number = models.CharField(max_length=20, default="A101", null = True)
     skills_interests = models.CharField(max_length=200, default="People Management")
     previous_experience = models.CharField(max_length=200, default="Organizer")
     availability_period = models.CharField(max_length=20, choices=[

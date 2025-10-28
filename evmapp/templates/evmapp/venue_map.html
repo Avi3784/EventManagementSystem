@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="container mt-4">
+    <h2>Select Venue Location</h2>
+    <div class="row">
+        <div class="col-md-8">
+            <div id="map" style="height: 400px;"></div>
+        </div>
+        <div class="col-md-4">
+            <form method="post" id="venue-form">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label for="venue-name">Venue Name</label>
+                    <input type="text" class="form-control" id="venue-name" name="venue" required>
+                </div>
+                <input type="hidden" id="latitude" name="latitude">
+                <input type="hidden" id="longitude" name="longitude">
+                <button type="submit" class="btn btn-primary mt-3">Save Location</button>
+            </form>
+        </div>
+    </div>
+</div>
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize the map
+        var map = L.map('map').setView([20.5937, 78.9629], 5); // Center on India
+
+        // Add OpenStreetMap tiles
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap contributors'
+        }).addTo(map);
+
+        // Add geocoding control
+        var geocoder = L.Control.geocoder({
+            defaultMarkGeocode: false
+        })
+        .on('markgeocode', function(e) {
+            var bbox = e.geocode.bbox;
+            var poly = L.polygon([
+                bbox.getSouthEast(),
+                bbox.getNorthEast(),
+                bbox.getNorthWest(),
+                bbox.getSouthWest()
+            ]);
+            map.fitBounds(poly.getBounds());
+            
+            // Set marker at the location
+            if (marker) {
+                marker.setLatLng(e.geocode.center);
+            } else {
+                marker = L.marker(e.geocode.center).addTo(map);
+            }
+            
+            // Update form fields
+            document.getElementById('latitude').value = e.geocode.center.lat;
+            document.getElementById('longitude').value = e.geocode.center.lng;
+        })
+        .addTo(map);
+
+        // Initialize marker variable
+        var marker = null;
+
+        // Handle map clicks
+        map.on('click', function(e) {
+            if (marker) {
+                marker.setLatLng(e.latlng);
+            } else {
+                marker = L.marker(e.latlng).addTo(map);
+            }
+            
+            // Update form fields
+            document.getElementById('latitude').value = e.latlng.lat;
+            document.getElementById('longitude').value = e.latlng.lng;
+        });
+    });
+</script>
+{% endblock %}
+{% endblock %}

@@ -1,13 +1,13 @@
 # Event Management System (EVM) Web Application
 
-The Event Management System (EVM) is a Django-based web application designed to streamline event management processes. This application provides features for organizing events, managing vendors, tracking volunteers, and handling ticket bookings efficiently.
+The Event Management System (EVM) is a Django-based web application designed to streamline event management processes. This application provides features for organizing events, managing sponsors, tracking volunteers, and handling ticket bookings efficiently.
 
 ## Features
 
 - **User Authentication**: Users can register, login, and logout securely to access the application's functionalities.
-- **Dashboard**: Provides an overview of total events, vendors, funds raised, and ticket sales.
+- **Dashboard**: Provides an overview of total events, sponsors, funds raised, and ticket sales.
 - **Event Management**: Admins can add, view, edit, and manage events with details such as name, organizer, date, time, venue, and theme.
-- **Vendor Management**: Allows the addition and management of vendors associated with events, including their purpose, contact information, and costs.
+- **Sponsor Management**: Allows the addition and management of sponsors associated with events, including their purpose, contact information, and costs.
 - **Ticket Booking**: Users can book event tickets with options for paid and free events. Payment integration is facilitated through Razorpay.
 - **SMS Confirmation**: Sends SMS confirmation to users upon successful ticket booking using Twilio integration.
 - **Volunteer Management**: Admins can add, view, and manage volunteers interested in contributing to events.
@@ -49,10 +49,10 @@ The Event Management System (EVM) is a Django-based web application designed to 
 ## Usage
 
 - Register as a user or login if already registered.
-- Explore the dashboard for insights into events, vendors, and funds raised.
+- Explore the dashboard for insights into events, sponsors, and funds raised.
 - Add, view, edit, and manage events through the admin interface.
 - Book event tickets and receive SMS confirmations upon successful booking.
-- Manage volunteers and vendors associated with events.
+- Manage volunteers and sponsors associated with events.
 - Export participant details to a CSV file for analysis.
 
 ## Contributing

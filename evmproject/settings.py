@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 import os
 from pathlib import Path
 from datetime import timedelta
+import dj_database_url
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -28,7 +29,7 @@ SECRET_KEY = 'django-insecure-%=$70@b8eq$y&9!sdualerau147z-zw^56k+zbjcyw4#sgn=xl
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['nugevents.in', 'www.nugevents.in', '127.0.0.1']
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -83,9 +84,8 @@ WSGI_APPLICATION = 'evmproject.wsgi.application'
 
 
 DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+    'default': dj_database_url.config(
+        default=os.environ.get('DATABASE_URL')
     }
 }
 
@@ -135,11 +135,22 @@ STATIC_URL = 'static/'
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
+# Email settings - Using Gmail SMTP
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = 'aviralbhargava30@gmail.com'  # Your Gmail address
+EMAIL_HOST_PASSWORD = 'pgbk kamv nrmd unyq'     # Your 16-character App Password
+DEFAULT_FROM_EMAIL = 'Event Management System <aviralbhargava30@gmail.com>'
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
+# Google Maps API Key
+GOOGLE_MAPS_API_KEY = 'YOUR_API_KEY_HERE'  # Replace with your actual API key
 
 TWILIO_ACCOUNT_SID = 'your twilio sid'
 
@@ -150,5 +161,12 @@ TWILIO_AUTH_TOKEN = 'your twilio auth token'
 TWILIO_PHONE_NUMBER = 'Your twilio phone number'
 
 RAZORPAY_API_KEY = 'Your razorpay api key'
+RAZORPAY_API_SECRET = 'Your razorpay api secret'
+
+# UPI (for QR payments) - update these before using UPI QR in production
+UPI_VPA = 'aviralbhargava30-1@okicici'  # replace with your UPI VPA (e.g. merchant@bank)
+UPI_NAME = 'Aviral'  # payee name shown in some UPI apps
+UPI_NOTE = 'Event Payment'  # optional note to include in UPI transaction
 
 
+CSRF_TRUSTED_ORIGINS = ['https://*.github.dev', 'https://*.app.github.dev', 'http://127.0.0.1:8000', 'https://localhost:8000']

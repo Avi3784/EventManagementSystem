@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background-color: #f8f9fa; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .footer { text-align: center; padding: 20px; font-size: 0.8em; }
+        .ticket-details { background-color: #f8f9fa; padding: 15px; margin: 15px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Booking Confirmation</h1>
+        </div>
+        <div class="content">
+            <p>Dear {{ booking.name }},</p>
+            
+            <p>Thank you for booking tickets for <strong>{{ booking.event.event_name }}</strong>. Your booking has been confirmed!</p>
+            
+            <div class="ticket-details">
+                <h3>Booking Details:</h3>
+                <p><strong>Ticket ID:</strong> {{ booking.ticket_id }}</p>
+                <p><strong>Number of Tickets:</strong> {{ booking.number_of_tickets }}</p>
+                <p><strong>Event Date:</strong> {{ booking.event.date }}</p>
+                <p><strong>Event Time:</strong> {{ booking.event.time }}</p>
+                <p><strong>Venue:</strong> {{ booking.event.venue }}</p>
+                <p><strong>Total Amount:</strong> ₹{{ booking.total_cost }}</p>
+            </div>
+            
+            <p>Please keep this email for your records. You may be required to show your Ticket ID at the event.</p>
+            
+            <p>We look forward to seeing you at the event!</p>
+        </div>
+        <div class="footer">
+            <p>If you have any questions, please don't hesitate to contact us.</p>
+        </div>
+    </div>
+</body>
+</html>
