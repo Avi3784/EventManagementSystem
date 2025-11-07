@@ -196,5 +196,8 @@ for host in ALLOWED_HOSTS:
 # Honor the 'X-Forwarded-Proto' header sent by proxies (Render, Heroku, etc.)
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
-# Use WhiteNoise static file storage for production
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+# Use WhiteNoise static file storage for production (without manifest)
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
+
+# Disable static file compression for problematic files
+WHITENOISE_SKIP_COMPRESS_EXTENSIONS = ['js', 'js.map']
