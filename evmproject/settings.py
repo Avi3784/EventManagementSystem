@@ -14,6 +14,11 @@ import os
 from pathlib import Path
 from datetime import timedelta
 import dj_database_url
+from dotenv import load_dotenv
+
+# Load environment variables from a local .env file when present (for dev only)
+BASE_DIR = Path(__file__).resolve().parent.parent
+load_dotenv(BASE_DIR / '.env')
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -24,12 +29,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-%=$70@b8eq$y&9!sdualerau147z-zw^56k+zbjcyw4#sgn=xl'
+SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-%=$70@b8eq$y&9!sdualerau147z-zw^56k+zbjcyw4#sgn=xl')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['*']
+ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '.onrender.com,localhost,127.0.0.1').split(',')
 
 
 # Application definition
@@ -83,10 +88,14 @@ WSGI_APPLICATION = 'evmproject.wsgi.application'
 
 
 
+# Database
+# Default to local SQLite for dev, but allow overriding with DATABASE_URL (Render/Postgres)
 DATABASES = {
     'default': dj_database_url.config(
-        default=os.environ.get('DATABASE_URL')
-    }
+        default='sqlite:///' + str(BASE_DIR / 'db.sqlite3'),
+        conn_max_age=600,
+        ssl_require=not DEBUG,
+    )
 }
 
 
@@ -135,14 +144,14 @@ STATIC_URL = 'static/'
 
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
 
-# Email settings - Using Gmail SMTP
+# Email settings - Using Gmail SMTP (read from env in production)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = 'smtp.gmail.com'
-EMAIL_PORT = 587
-EMAIL_USE_TLS = True
-EMAIL_HOST_USER = 'aviralbhargava30@gmail.com'  # Your Gmail address
-EMAIL_HOST_PASSWORD = 'pgbk kamv nrmd unyq'     # Your 16-character App Password
-DEFAULT_FROM_EMAIL = 'Event Management System <aviralbhargava30@gmail.com>'
+EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
+EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
+EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
+EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
+EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
+DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'Event Management System <{EMAIL_HOST_USER}>')
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
@@ -150,23 +159,42 @@ DEFAULT_FROM_EMAIL = 'Event Management System <aviralbhargava30@gmail.com>'
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Google Maps API Key
-GOOGLE_MAPS_API_KEY = 'YOUR_API_KEY_HERE'  # Replace with your actual API key
+GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', 'API_KEY_HERE')
 
-TWILIO_ACCOUNT_SID = 'your twilio sid'
-
+# Twilio settings (move real values to env)
+TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', 'twilio_sid')
 # Twilio Auth Token
-TWILIO_AUTH_TOKEN = 'your twilio auth token'
-
+TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', 'twilio_auth_token')
 # Twilio Phone Number
-TWILIO_PHONE_NUMBER = 'Your twilio phone number'
+TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER', 'twilio_phone_number')
 
-RAZORPAY_API_KEY = 'Your razorpay api key'
-RAZORPAY_API_SECRET = 'Your razorpay api secret'
+# Razorpay credentials - read from environment for security
+RAZORPAY_API_KEY = os.environ.get('RAZORPAY_API_KEY', 'razorpay_api_key')
+RAZORPAY_API_SECRET = os.environ.get('RAZORPAY_API_SECRET', 'razorpay_api_secret')
+# Webhook secret (set in Razorpay dashboard and in your env)
+RAZORPAY_WEBHOOK_SECRET = os.environ.get('RAZORPAY_WEBHOOK_SECRET', '')
 
-# UPI (for QR payments) - update these before using UPI QR in production
-UPI_VPA = 'aviralbhargava30-1@okicici'  # replace with your UPI VPA (e.g. merchant@bank)
-UPI_NAME = 'Aviral'  # payee name shown in some UPI apps
-UPI_NOTE = 'Event Payment'  # optional note to include in UPI transaction
+# UPI (for QR payments) - update these in environment before using in production
+UPI_VPA = os.environ.get('UPI_VPA', '5678987654')  # replace with your UPI VPA (e.g. merchant@bank)
+UPI_NAME = os.environ.get('UPI_NAME', 'Aviral')  # payee name shown in some UPI apps
+UPI_NOTE = os.environ.get('UPI_NOTE', 'Event Payment')  # optional note to include in UPI transaction
 
 
+# Trust common dev origins and any production hosts provided in ALLOWED_HOSTS
 CSRF_TRUSTED_ORIGINS = ['https://*.github.dev', 'https://*.app.github.dev', 'http://127.0.0.1:8000', 'https://localhost:8000']
+for host in ALLOWED_HOSTS:
+    host = host.strip()
+    if not host:
+        continue
+    # If ALLOWED_HOSTS contains a leading dot (e.g. .onrender.com) add wildcard and root
+    if host.startswith('.'):
+        CSRF_TRUSTED_ORIGINS.append(f'https://{host.lstrip(".")}')
+        CSRF_TRUSTED_ORIGINS.append(f'https://{host}')
+    else:
+        CSRF_TRUSTED_ORIGINS.append(f'https://{host}')
+
+# Honor the 'X-Forwarded-Proto' header sent by proxies (Render, Heroku, etc.)
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
+# Use WhiteNoise static file storage for production
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

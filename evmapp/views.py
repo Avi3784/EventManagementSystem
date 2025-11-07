@@ -1,13 +1,17 @@
-import csv, string, secrets
+import csv, string, secrets, json
 from django.views.decorators.csrf import csrf_exempt
 
 import uuid
 import razorpay
+import qrcode
+from io import BytesIO
+from urllib.parse import quote_plus
+from django.core.mail import EmailMessage
 from django.shortcuts import render, redirect
 from decimal import Decimal, InvalidOperation
 from django.contrib.auth.decorators import login_required
 from evmproject import settings
-from .models import Booking, Event, Sponsor, Volunteer
+from .models import Booking, Event, Sponsor, Volunteer, Payment
 from django.contrib import messages
 from django.core.mail import send_mail
 from django.template.loader import render_to_string
@@ -251,16 +255,38 @@ def send_booking_confirmation_email(booking):
         },
     }
     
+    # Build UPI URI for attachments and template (if UPI configured)
+    upi_uri = None
+    try:
+        if getattr(settings, 'UPI_VPA', None) and booking.total_cost and float(booking.total_cost) > 0:
+            note = getattr(settings, 'UPI_NOTE', '') or event.event_name
+            upi_uri = f"upi://pay?pa={settings.UPI_VPA}&pn={quote_plus(getattr(settings, 'UPI_NAME', ''))}&am={booking.total_cost}&cu=INR&tn={quote_plus(note)}"
+            context['upi_uri'] = upi_uri
+    except Exception:
+        upi_uri = None
+
     message = render_to_string('evmapp/email/booking_confirmation.html', context)
-    
-    send_mail(
-        subject,
-        message,
-        settings.DEFAULT_FROM_EMAIL,
-        [booking.email],
-        html_message=message,
-        fail_silently=False,
-    )
+
+    # Use EmailMessage so we can attach the UPI QR image
+    email = EmailMessage(subject, message, settings.DEFAULT_FROM_EMAIL, [booking.email])
+    email.content_subtype = 'html'
+
+    # Attach server-side generated UPI QR PNG for convenience
+    if upi_uri:
+        try:
+            qr_img = qrcode.make(upi_uri)
+            buf = BytesIO()
+            qr_img.save(buf, format='PNG')
+            buf.seek(0)
+            email.attach(f'upi_{booking.id}.png', buf.read(), 'image/png')
+        except Exception as e:
+            # Log and continue without blocking email
+            print(f"Failed to generate/attach UPI QR: {e}")
+
+    try:
+        email.send(fail_silently=False)
+    except Exception as e:
+        print(f"Failed to send booking confirmation email: {e}")
 
 def send_event_reminder_email(booking, hours_remaining=24):
     """Send event reminder email with time-specific information"""
@@ -384,12 +410,14 @@ def ticketbooking(request):
                 try:
                     # Use API credentials from settings so authentication works in dev/prod
                     client = razorpay.Client(auth=(settings.RAZORPAY_API_KEY, settings.RAZORPAY_API_SECRET))
-                    payment = client.order.create({
+                    order = client.order.create({
                         'amount': int(total_cost * 100),
                         'currency': 'INR',
+                        'receipt': str(ticket_id),
                         'payment_capture': '1'
                     })
 
+                    # Create booking record (payment will be confirmed via webhook / confirm endpoint)
                     booking = Booking.objects.create(
                         event=event,
                         number_of_tickets=number_of_tickets,
@@ -397,18 +425,22 @@ def ticketbooking(request):
                         contact_number=contact_number,
                         email=email,
                         total_cost=total_cost,
-                        ticket_id=ticket_id,
-                        payment_id=payment['id']
+                        ticket_id=ticket_id
                     )
 
-                    # Send confirmations
-                    confirmation_message = f"Dear {name}, your booking for {number_of_tickets} ticket(s) with ticket ID {ticket_id} has been confirmed."
-                    send_confirmation_sms(contact_number, confirmation_message)
-                    send_booking_confirmation_email(booking)
+                    # Persist order id for reconciliation
+                    Payment.objects.create(
+                        booking=booking,
+                        razorpay_order_id=order.get('id'),
+                        amount=total_cost,
+                        currency='INR',
+                        status='created',
+                        raw_response=order
+                    )
 
-                    # Pass booking and UPI config so checkout can render QR (if desired)
+                    # Pass booking and order info so checkout can render Razorpay widget and UPI QR
                     return render(request, "evmapp/checkout.html", {
-                        'payment': payment,
+                        'payment': order,
                         'booking': booking,
                         'UPI_VPA': settings.UPI_VPA,
                         'UPI_NAME': settings.UPI_NAME,
@@ -439,6 +471,139 @@ def ticketbooking(request):
             return render(request, 'evmapp/ticketbooking.html', {'events': events})
     
     return render(request, 'evmapp/ticketbooking.html', {'events': events})
+
+
+@csrf_exempt
+def payment_confirm(request):
+    """Endpoint the frontend calls after Razorpay checkout success to verify signature server-side."""
+    if request.method != 'POST':
+        return JsonResponse({'status': 'error', 'reason': 'invalid_method'}, status=405)
+
+    try:
+        payload = json.loads(request.body)
+    except Exception:
+        return JsonResponse({'status': 'error', 'reason': 'invalid_json'}, status=400)
+
+    payment_id = payload.get('razorpay_payment_id')
+    order_id = payload.get('razorpay_order_id')
+    signature = payload.get('razorpay_signature')
+
+    if not all([payment_id, order_id, signature]):
+        return JsonResponse({'status': 'error', 'reason': 'missing_fields'}, status=400)
+
+    client = razorpay.Client(auth=(settings.RAZORPAY_API_KEY, settings.RAZORPAY_API_SECRET))
+    try:
+        client.utility.verify_payment_signature({
+            'razorpay_order_id': order_id,
+            'razorpay_payment_id': payment_id,
+            'razorpay_signature': signature
+        })
+    except Exception:
+        return JsonResponse({'status': 'error', 'reason': 'signature_verification_failed'}, status=400)
+
+    payment_obj = Payment.objects.filter(razorpay_order_id=order_id).first()
+    if not payment_obj:
+        return JsonResponse({'status': 'error', 'reason': 'order_not_found'}, status=404)
+
+    # Idempotency: if already processed, return ok
+    if payment_obj.razorpay_payment_id:
+        return JsonResponse({'status': 'ok', 'message': 'already_processed'})
+
+    # Update payment and booking
+    payment_obj.razorpay_payment_id = payment_id
+    payment_obj.status = 'captured'
+    payment_obj.raw_response = payload
+    payment_obj.method = payload.get('method')
+    payment_obj.save()
+
+    booking = payment_obj.booking
+    booking.paid = True
+    booking.payment_id = payment_id
+    booking.save()
+
+    # Send confirmations now that payment is verified
+    try:
+        send_confirmation_sms(booking.contact_number, f"Dear {booking.name}, your booking for {booking.number_of_tickets} ticket(s) with ticket ID {booking.ticket_id} has been confirmed.")
+    except Exception:
+        pass
+    try:
+        send_booking_confirmation_email(booking)
+    except Exception:
+        pass
+
+    return JsonResponse({'status': 'ok'})
+
+
+@csrf_exempt
+def razorpay_webhook(request):
+    """Webhook endpoint for Razorpay events. Verify signature and process events idempotently."""
+    payload = request.body
+    signature = request.META.get('HTTP_X_RAZORPAY_SIGNATURE')
+    webhook_secret = getattr(settings, 'RAZORPAY_WEBHOOK_SECRET', '')
+    client = razorpay.Client(auth=(settings.RAZORPAY_API_KEY, settings.RAZORPAY_API_SECRET))
+
+    # Verify signature
+    try:
+        client.utility.verify_webhook_signature(payload, signature, webhook_secret)
+    except Exception:
+        return HttpResponse(status=400)
+
+    try:
+        event = json.loads(payload)
+    except Exception:
+        return HttpResponse(status=400)
+
+    ev_type = event.get('event')
+    p = event.get('payload', {})
+    payment_entity = p.get('payment', {}).get('entity', {})
+
+    # Handle payment captured
+    if ev_type == 'payment.captured' and payment_entity:
+        order_id = payment_entity.get('order_id')
+        payment_id = payment_entity.get('id')
+        payment_obj = Payment.objects.filter(razorpay_order_id=order_id).first()
+        if payment_obj and not payment_obj.razorpay_payment_id:
+            payment_obj.razorpay_payment_id = payment_id
+            payment_obj.status = 'captured'
+            payment_obj.raw_response = payment_entity
+            payment_obj.method = payment_entity.get('method')
+            payment_obj.save()
+
+            booking = payment_obj.booking
+            booking.paid = True
+            booking.payment_id = payment_id
+            booking.save()
+            # send confirmation
+            try:
+                send_confirmation_sms(booking.contact_number, f"Dear {booking.name}, your booking (Ticket ID: {booking.ticket_id}) is confirmed.")
+            except Exception:
+                pass
+            try:
+                send_booking_confirmation_email(booking)
+            except Exception:
+                pass
+
+    # Handle payment failed
+    if ev_type == 'payment.failed' and payment_entity:
+        order_id = payment_entity.get('order_id')
+        payment_obj = Payment.objects.filter(razorpay_order_id=order_id).first()
+        if payment_obj:
+            payment_obj.status = 'failed'
+            payment_obj.raw_response = payment_entity
+            payment_obj.save()
+
+    return HttpResponse(status=200)
+
+
+@login_required(login_url='/login/')
+def payments_admin(request):
+    """Staff view: list recent payments for reconciliation/audit."""
+    if not request.user.is_staff:
+        messages.error(request, 'Permission denied')
+        return redirect('home')
+
+    payments = Payment.objects.select_related('booking__event').order_by('-created_at')[:200]
+    return render(request, 'evmapp/payments_list.html', {'payments': payments})
 
 
 def update_event_status(request):
@@ -553,11 +718,11 @@ def download_participants_csv(request):
     response['Content-Disposition'] = 'attachment; filename="participants.csv"'
 
     writer = csv.writer(response)
-    writer.writerow(['Name', 'Contact Number', 'Flat Number', 'Tickets', 'Total Cost', 'Ticket ID'])
+    writer.writerow(['Name', 'Contact Number', 'Tickets', 'Total Cost', 'Ticket ID'])
 
     bookings = Booking.objects.all()
     for booking in bookings:
-        writer.writerow([booking.name, booking.contact_number, booking.flat_number, booking.number_of_tickets, booking.total_cost, booking.ticket_id])
+        writer.writerow([booking.name, booking.contact_number, booking.number_of_tickets, booking.total_cost, booking.ticket_id])
 
     return response
 

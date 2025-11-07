@@ -1,0 +1,1 @@
+web: gunicorn evmproject.wsgi:application --log-file -
