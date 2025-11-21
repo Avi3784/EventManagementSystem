@@ -12,13 +12,6 @@ https://docs.djangoproject.com/en/4.2/ref/settings/
 
 import os
 from pathlib import Path
-from datetime import timedelta
-import dj_database_url
-from dotenv import load_dotenv
-
-# Load environment variables from a local .env file when present (for dev only)
-BASE_DIR = Path(__file__).resolve().parent.parent
-load_dotenv(BASE_DIR / '.env')
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -29,12 +22,12 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # See https://docs.djangoproject.com/en/4.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = os.environ.get('DJANGO_SECRET_KEY', 'django-insecure-%=$70@b8eq$y&9!sdualerau147z-zw^56k+zbjcyw4#sgn=xl')
+SECRET_KEY = 'django-insecure-%=$70@b8eq$y&9!sdualerau147z-zw^56k+zbjcyw4#sgn=xl'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = os.environ.get('DJANGO_DEBUG', 'False') == 'True'
+DEBUG = True
 
-ALLOWED_HOSTS = os.environ.get('ALLOWED_HOSTS', '.onrender.com,localhost,127.0.0.1').split(',')
+ALLOWED_HOSTS = []
 
 
 # Application definition
@@ -46,7 +39,6 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    "whitenoise.runserver_nostatic",
     'evmapp'
 ]
 
@@ -58,7 +50,6 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    "whitenoise.middleware.WhiteNoiseMiddleware",
 
 ]
 
@@ -89,13 +80,12 @@ WSGI_APPLICATION = 'evmproject.wsgi.application'
 
 
 # Database
-# Default to local SQLite for dev, but allow overriding with DATABASE_URL (Render/Postgres)
+# https://docs.djangoproject.com/en/4.2/ref/settings/#databases
 DATABASES = {
-    'default': dj_database_url.config(
-        default='sqlite:///' + str(BASE_DIR / 'db.sqlite3'),
-        conn_max_age=600,
-        ssl_require=not DEBUG,
-    )
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+    }
 }
 
 
@@ -140,33 +130,32 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/4.2/howto/static-files/
 
-STATIC_URL = 'static/'
-
+STATIC_URL = '/static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'staticfiles')
+STATICFILES_DIRS = [
+    os.path.join(BASE_DIR, 'evmapp/static'),
+]
 
-# Email settings - Using Gmail SMTP (read from env in production)
+# Email settings
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
-EMAIL_HOST = os.environ.get('EMAIL_HOST', 'smtp.gmail.com')
-EMAIL_PORT = int(os.environ.get('EMAIL_PORT', 587))
-EMAIL_USE_TLS = os.environ.get('EMAIL_USE_TLS', 'True') == 'True'
-EMAIL_HOST_USER = os.environ.get('EMAIL_HOST_USER', '')
-EMAIL_HOST_PASSWORD = os.environ.get('EMAIL_HOST_PASSWORD', '')
-DEFAULT_FROM_EMAIL = os.environ.get('DEFAULT_FROM_EMAIL', f'Event Management System <{EMAIL_HOST_USER}>')
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_PORT = 587
+EMAIL_USE_TLS = True
+EMAIL_USE_SSL = False
+EMAIL_TIMEOUT = 30
+EMAIL_HOST_USER = 'aviralbhargava30@gmail.com'
+EMAIL_HOST_PASSWORD = 'hkqd rfbm uott lfml'
+DEFAULT_FROM_EMAIL = 'Event Management System <aviralbhargava30@gmail.com>'
+SERVER_EMAIL = 'aviralbhargava30@gmail.com'
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
-# Google Maps API Key
-GOOGLE_MAPS_API_KEY = os.environ.get('GOOGLE_MAPS_API_KEY', 'API_KEY_HERE')
 
-# Twilio settings (move real values to env)
-TWILIO_ACCOUNT_SID = os.environ.get('TWILIO_ACCOUNT_SID', 'twilio_sid')
-# Twilio Auth Token
-TWILIO_AUTH_TOKEN = os.environ.get('TWILIO_AUTH_TOKEN', 'twilio_auth_token')
-# Twilio Phone Number
-TWILIO_PHONE_NUMBER = os.environ.get('TWILIO_PHONE_NUMBER', 'twilio_phone_number')
+
+
 
 # Razorpay credentials - read from environment for security
 RAZORPAY_API_KEY = os.environ.get('RAZORPAY_API_KEY', 'razorpay_api_key')
@@ -193,11 +182,5 @@ for host in ALLOWED_HOSTS:
     else:
         CSRF_TRUSTED_ORIGINS.append(f'https://{host}')
 
-# Honor the 'X-Forwarded-Proto' header sent by proxies (Render, Heroku, etc.)
-SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
-
-# Use WhiteNoise static file storage for production (without manifest)
-STATICFILES_STORAGE = 'whitenoise.storage.CompressedStaticFilesStorage'
-
-# Disable static file compression for problematic files
-WHITENOISE_SKIP_COMPRESS_EXTENSIONS = ['js', 'js.map']
+# Default CSRF settings
+CSRF_TRUSTED_ORIGINS = ['http://127.0.0.1:8000', 'http://localhost:8000']

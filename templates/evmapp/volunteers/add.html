@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Add Volunteer{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8 col-md-10">
+            <div class="card">
+                <div class="card-header p-4">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h4 class="mb-0">Join Our Volunteer Team</h4>
+                            <p class="text-muted mb-0">Make a difference by becoming a volunteer</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="card-body p-4">
+                    {% if messages %}
+                    {% for message in messages %}
+                    <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                        {{ message }}
+                        <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                    </div>
+                    {% endfor %}
+                    {% endif %}
+
+                    <form method="post" class="needs-validation" novalidate>
+                        {% csrf_token %}
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="first_name" class="form-label">First Name *</label>
+                                    <input type="text" class="form-control" id="first_name" name="first_name" required>
+                                    <div class="invalid-feedback">
+                                        Please enter your first name
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="last_name" class="form-label">Last Name *</label>
+                                    <input type="text" class="form-control" id="last_name" name="last_name" required>
+                                    <div class="invalid-feedback">
+                                        Please enter your last name
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="email" class="form-label">Email Address *</label>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                    <div class="invalid-feedback">
+                                        Please enter a valid email address
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="phone" class="form-label">Phone Number *</label>
+                                    <input type="tel" class="form-control" id="phone" name="phone" 
+                                           pattern="[0-9]{10}" required>
+                                    <div class="invalid-feedback">
+                                        Please enter a valid 10-digit phone number
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="address" class="form-label">Address *</label>
+                            <textarea class="form-control" id="address" name="address" rows="3" required></textarea>
+                            <div class="invalid-feedback">
+                                Please enter your address
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="city" class="form-label">City *</label>
+                                    <input type="text" class="form-control" id="city" name="city" required>
+                                    <div class="invalid-feedback">
+                                        Please enter your city
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="col-md-6">
+                                <div class="form-group mb-3">
+                                    <label for="state" class="form-label">State *</label>
+                                    <input type="text" class="form-control" id="state" name="state" required>
+                                    <div class="invalid-feedback">
+                                        Please enter your state
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="volunteer_role" class="form-label">Preferred Role *</label>
+                            <select class="form-select" id="volunteer_role" name="volunteer_role" required>
+                                <option value="">Select a role</option>
+                                <option value="Event Coordinator">Event Coordinator</option>
+                                <option value="Registration Desk">Registration Desk</option>
+                                <option value="Technical Support">Technical Support</option>
+                                <option value="Guest Relations">Guest Relations</option>
+                                <option value="Marketing">Marketing & Promotion</option>
+                                <option value="Logistics">Logistics & Setup</option>
+                                <option value="Security">Security</option>
+                                <option value="First Aid">First Aid & Safety</option>
+                                <option value="Photography">Photography & Documentation</option>
+                                <option value="General">General Volunteer</option>
+                            </select>
+                            <div class="invalid-feedback">
+                                Please select a preferred role
+                            </div>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="skills" class="form-label">Skills & Experience</label>
+                            <textarea class="form-control" id="skills" name="skills" rows="3" 
+                                    placeholder="Tell us about your relevant skills and experience..."></textarea>
+                        </div>
+
+                        <div class="form-group mb-3">
+                            <label for="availability" class="form-label">Availability *</label>
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="availability[]" value="weekday_morning" id="weekday_morning">
+                                        <label class="form-check-label" for="weekday_morning">
+                                            Weekday Mornings
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="availability[]" value="weekday_afternoon" id="weekday_afternoon">
+                                        <label class="form-check-label" for="weekday_afternoon">
+                                            Weekday Afternoons
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="availability[]" value="weekday_evening" id="weekday_evening">
+                                        <label class="form-check-label" for="weekday_evening">
+                                            Weekday Evenings
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="availability[]" value="weekend_morning" id="weekend_morning">
+                                        <label class="form-check-label" for="weekend_morning">
+                                            Weekend Mornings
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="availability[]" value="weekend_afternoon" id="weekend_afternoon">
+                                        <label class="form-check-label" for="weekend_afternoon">
+                                            Weekend Afternoons
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="availability[]" value="weekend_evening" id="weekend_evening">
+                                        <label class="form-check-label" for="weekend_evening">
+                                            Weekend Evenings
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-md-4">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="availability[]" value="on_call" id="on_call">
+                                        <label class="form-check-label" for="on_call">
+                                            On-Call
+                                        </label>
+                                    </div>
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" name="availability[]" value="flexible" id="flexible">
+                                        <label class="form-check-label" for="flexible">
+                                            Flexible
+                                        </label>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="invalid-feedback">
+                                Please select at least one availability option
+                            </div>
+                        </div>
+
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="terms" name="terms" required>
+                            <label class="form-check-label" for="terms">
+                                I agree to the volunteer terms and conditions, and I understand that this is an unpaid volunteer position.
+                            </label>
+                            <div class="invalid-feedback">
+                                You must agree to the terms to continue
+                            </div>
+                        </div>
+
+                        <div class="text-end">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="fas fa-hands-helping me-2"></i>Submit Application
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(event) {
+        if (!form.checkValidity()) {
+            event.preventDefault();
+            event.stopPropagation();
+        }
+        
+        // Check if at least one availability option is selected
+        const availabilityCheckboxes = document.querySelectorAll('input[name="availability[]"]');
+        let availabilitySelected = false;
+        availabilityCheckboxes.forEach(checkbox => {
+            if (checkbox.checked) availabilitySelected = true;
+        });
+        
+        if (!availabilitySelected) {
+            event.preventDefault();
+            document.querySelector('#availability').classList.add('is-invalid');
+        } else {
+            document.querySelector('#availability').classList.remove('is-invalid');
+        }
+        
+        form.classList.add('was-validated');
+    });
+
+    // Phone number formatting
+    const phoneInput = document.getElementById('phone');
+    phoneInput.addEventListener('input', function(e) {
+        let x = e.target.value.replace(/\D/g, '').match(/(\d{0,3})(\d{0,3})(\d{0,4})/);
+        e.target.value = !x[2] ? x[1] : !x[3] ? x[1] + '-' + x[2] : x[1] + '-' + x[2] + '-' + x[3];
+    });
+
+    // Clear form after successful submission
+    if (document.querySelector('.alert-success')) {
+        form.reset();
+        form.classList.remove('was-validated');
+    }
+});
+</script>
+{% endblock %}

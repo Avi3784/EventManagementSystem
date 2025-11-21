@@ -1,0 +1,86 @@
+{% load volunteer_tags %}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px;
+            margin-bottom: 20px;
+        }
+        .content {
+            background: #fff;
+            padding: 20px;
+            border-radius: 5px;
+            border: 1px solid #ddd;
+        }
+        .role-info {
+            background: #f9f9f9;
+            padding: 15px;
+            border-left: 4px solid #4CAF50;
+            margin: 20px 0;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #ddd;
+            font-size: 0.9em;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>Thank You for Volunteering!</h1>
+    </div>
+    
+    <div class="content">
+        <p>Dear {{ volunteer.first_name }} {{ volunteer.last_name }},</p>
+        
+        <p>Thank you for expressing interest in volunteering with us! We've received your application and are excited about the possibility of working together.</p>
+        
+        <div class="role-info">
+            <h3>Your Selected Role: {{ volunteer.volunteer_role }}</h3>
+            <p><strong>What this role involves:</strong></p>
+            <p>{{ roles_description|get:volunteer.volunteer_role }}</p>
+        </div>
+        
+        <h3>Next Steps</h3>
+        <ol>
+            <li>Our volunteer coordinator will review your application</li>
+            <li>You'll receive another email within 2-3 business days</li>
+            <li>We may schedule a brief orientation call</li>
+            <li>You'll receive specific event assignments based on your availability</li>
+        </ol>
+        
+        <h3>Your Application Details</h3>
+        <ul>
+            <li><strong>Role:</strong> {{ volunteer.volunteer_role }}</li>
+            <li><strong>Availability:</strong> {{ volunteer.availability|join:", " }}</li>
+            <li><strong>Location:</strong> {{ volunteer.city }}, {{ volunteer.state }}</li>
+        </ul>
+        
+        <p>If you need to update any information or have questions, please don't hesitate to contact us.</p>
+        
+        <p>Best regards,<br>The Event Management Team</p>
+    </div>
+    
+    <div class="footer">
+        <p>This is an automated message. Please do not reply directly to this email.</p>
+        <p>Follow us on social media for updates and event information!</p>
+    </div>
+</body>
+</html>

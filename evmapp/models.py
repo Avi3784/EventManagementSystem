@@ -98,37 +98,61 @@ class UserProfile(models.Model):
 from django.db import models
 
 class Volunteer(models.Model):
-    name = models.CharField(max_length=100, default="John Doe")
-    contact_number = models.CharField(max_length=20, default="123-456-7890")
-    email = models.EmailField(default="john.doe@example.com")
-    skills_interests = models.CharField(max_length=200, default="People Management")
-    previous_experience = models.CharField(max_length=200, default="Organizer")
-    availability_period = models.CharField(max_length=20, choices=[
-        ('One-time', 'One-time'),
-        ('Weekly', 'Weekly'),
-        ('Monthly', 'Monthly'),
-        ('Always', 'Always')
-    ], default="One-time")
-    volunteer_role = models.CharField(max_length=100, choices=[
-        ('Administrative Assistant', 'Administrative Assistant'),
-        ('Fundraiser', 'Fundraiser'),
-        ('Marketing Coordinator', 'Marketing Coordinator'),
-        ('Social Media Manager', 'Social Media Manager'),
-        ('Event Planner', 'Event Planner'),
-        ('Mentor', 'Mentor'),
-        ('Food Distribution Coordinator', 'Food Distribution Coordinator'),
-        ('Event Photographer', 'Event Photographer'),
-        ('Event Videographer', 'Event Videographer'),
+    STATUS_CHOICES = (
+        ('Active', 'Active'),
+        ('Pending', 'Pending'),
+        ('Inactive', 'Inactive'),
+    )
+    
+    ROLE_CHOICES = (
+        ('Event Coordinator', 'Event Coordinator'),
+        ('Registration Desk', 'Registration Desk'),
         ('Technical Support', 'Technical Support'),
-        ('Inventory Manager', 'Inventory Manager'),
-        ('Security Officer', 'Security Officer'),
-        ('First Aid Provider', 'First Aid Provider'),
-        ('Referee', 'Referee')
-    ], default="Administrative Assistant")
-    emergency_contact = models.CharField(max_length=20, default="123-456-7890")
+        ('Guest Relations', 'Guest Relations'),
+        ('Marketing', 'Marketing & Promotion'),
+        ('Logistics', 'Logistics & Setup'),
+        ('Security', 'Security'),
+        ('First Aid', 'First Aid & Safety'),
+        ('Photography', 'Photography & Documentation'),
+        ('General', 'General Volunteer'),
+    )
 
+    # Personal Information
+    first_name = models.CharField(max_length=50, blank=True, null=True)
+    last_name = models.CharField(max_length=50, blank=True, null=True)
+    email = models.EmailField(blank=True, null=True)
+    phone = models.CharField(max_length=15, blank=True, null=True)
+    address = models.TextField(blank=True, null=True)
+    city = models.CharField(max_length=100, blank=True, null=True)
+    state = models.CharField(max_length=100, blank=True, null=True)
+    
+    # Volunteer Details
+    volunteer_role = models.CharField(max_length=100, choices=ROLE_CHOICES, default='General')
+    skills = models.TextField(blank=True, null=True)
+    availability = models.JSONField(default=list)  # Store as JSON array
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='Pending')
+    
+    # System Fields
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    
+    class Meta:
+        ordering = ['-created_at']
+    
     def __str__(self):
-        return self.name
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name} - {self.volunteer_role}"
+        return f"Volunteer - {self.volunteer_role}"
+    
+    def get_full_name(self):
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        return "No name provided"
+    
+    def get_availability_display(self):
+        if not self.availability:
+            return "Not specified"
+        return ", ".join(self.availability)
 
 
 class Payment(models.Model):

@@ -1,0 +1,397 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Volunteers{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <!-- Header Section -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-3">
+                    <div class="row align-items-center">
+                        <div class="col-md-6">
+                            <h4 class="mb-1">Volunteer Management</h4>
+                            <p class="text-sm mb-0">Manage and view all volunteer applications</p>
+                        </div>
+                        <div class="col-md-6 text-md-end">
+                            <a href="{% url 'add_volunteer' %}" class="btn btn-primary btn-sm">
+                                <i class="la la-plus me-1"></i>Add New Volunteer
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Filters and Search -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-body p-3">
+                    <form id="filterForm" class="row g-3">
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="roleFilter" class="form-label">Role</label>
+                                <select class="form-select" id="roleFilter">
+                                    <option value="">All Roles</option>
+                                    <option value="Event Coordinator">Event Coordinator</option>
+                                    <option value="Registration Desk">Registration Desk</option>
+                                    <option value="Technical Support">Technical Support</option>
+                                    <option value="Guest Relations">Guest Relations</option>
+                                    <option value="Marketing">Marketing & Promotion</option>
+                                    <option value="Logistics">Logistics & Setup</option>
+                                    <option value="Security">Security</option>
+                                    <option value="First Aid">First Aid & Safety</option>
+                                    <option value="Photography">Photography & Documentation</option>
+                                    <option value="General">General Volunteer</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="form-group">
+                                <label for="statusFilter" class="form-label">Status</label>
+                                <select class="form-select" id="statusFilter">
+                                    <option value="">All Status</option>
+                                    <option value="Active">Active</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Inactive">Inactive</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <div class="form-group">
+                                <label for="search" class="form-label">Search</label>
+                                <input type="text" class="form-control" id="search" placeholder="Search volunteers...">
+                            </div>
+                        </div>
+                        <div class="col-md-2 d-flex align-items-end">
+                            <button type="button" class="btn btn-secondary w-100" id="resetFilters">
+                                Reset
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Volunteers List -->
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="table-responsive">
+                    <table class="table align-items-center mb-0">
+                        <thead>
+                            <tr>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7">Volunteer</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Role</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Contact</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Availability</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Status</th>
+                                <th class="text-uppercase text-secondary text-xxs font-weight-bolder opacity-7 ps-2">Added Date</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for volunteer in volunteers %}
+                            <tr>
+                                <td>
+                                    <div class="d-flex px-2 py-1">
+                                        <div class="d-flex flex-column justify-content-center">
+                                            <h6 class="mb-0 text-sm">{{ volunteer.first_name }} {{ volunteer.last_name }}</h6>
+                                            <p class="text-xs text-secondary mb-0">ID: #{{ volunteer.id }}</p>
+                                        </div>
+                                    </div>
+                                </td>
+                                <td>
+                                    <p class="text-xs font-weight-bold mb-0">{{ volunteer.volunteer_role }}</p>
+                                </td>
+                                <td>
+                                    <p class="text-xs font-weight-bold mb-0">{{ volunteer.email }}</p>
+                                    <p class="text-xs text-secondary mb-0">{{ volunteer.phone }}</p>
+                                </td>
+                                <td>
+                                    <p class="text-xs font-weight-bold mb-0">{{ volunteer.availability|join:", " }}</p>
+                                </td>
+                                <td>
+                                    <span class="badge badge-sm {% if volunteer.status == 'Active' %}bg-gradient-success{% elif volunteer.status == 'Pending' %}bg-gradient-warning{% else %}bg-gradient-secondary{% endif %}">
+                                        {{ volunteer.status }}
+                                    </span>
+                                </td>
+                                <td>
+                                    <p class="text-xs font-weight-bold mb-0">{{ volunteer.created_at|date:"M d, Y" }}</p>
+                                    <p class="text-xs text-secondary mb-0">{{ volunteer.created_at|time:"g:i A" }}</p>
+                                </td>
+                                <td></td>
+                            </tr>
+                            {% empty %}
+                            <tr>
+                                <td colspan="7" class="text-center py-4">
+                                    <p class="text-secondary mb-2">No volunteers found</p>
+                                    <a href="{% url 'add_volunteer' %}" class="btn btn-sm btn-primary">Add First Volunteer</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% if volunteers.has_other_pages %}
+                <div class="card-footer py-3">
+                    <nav aria-label="Page navigation">
+                        <ul class="pagination justify-content-center mb-0">
+                            {% if volunteers.has_previous %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ volunteers.previous_page_number }}" aria-label="Previous">
+                                    <span aria-hidden="true">&laquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+
+                            {% for num in volunteers.paginator.page_range %}
+                            {% if volunteers.number == num %}
+                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                            {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                            {% endif %}
+                            {% endfor %}
+
+                            {% if volunteers.has_next %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ volunteers.next_page_number }}" aria-label="Next">
+                                    <span aria-hidden="true">&raquo;</span>
+                                </a>
+                            </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Volunteer Details Modal -->
+<div class="modal fade" id="volunteerDetailsModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Volunteer Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <h6 class="text-uppercase text-body text-xs font-weight-bolder">Personal Information</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item px-0">
+                                <span class="text-sm text-secondary">Full Name:</span>
+                                <span class="text-sm font-weight-bold ms-2" id="modalFullName"></span>
+                            </li>
+                            <li class="list-group-item px-0">
+                                <span class="text-sm text-secondary">Email:</span>
+                                <span class="text-sm font-weight-bold ms-2" id="modalEmail"></span>
+                            </li>
+                            <li class="list-group-item px-0">
+                                <span class="text-sm text-secondary">Phone:</span>
+                                <span class="text-sm font-weight-bold ms-2" id="modalPhone"></span>
+                            </li>
+                            <li class="list-group-item px-0">
+                                <span class="text-sm text-secondary">Address:</span>
+                                <span class="text-sm font-weight-bold ms-2" id="modalAddress"></span>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="col-md-6">
+                        <h6 class="text-uppercase text-body text-xs font-weight-bolder">Volunteer Information</h6>
+                        <ul class="list-group list-group-flush">
+                            <li class="list-group-item px-0">
+                                <span class="text-sm text-secondary">Role:</span>
+                                <span class="text-sm font-weight-bold ms-2" id="modalRole"></span>
+                            </li>
+                            <li class="list-group-item px-0">
+                                <span class="text-sm text-secondary">Status:</span>
+                                <span class="badge badge-sm" id="modalStatus"></span>
+                            </li>
+                            <li class="list-group-item px-0">
+                                <span class="text-sm text-secondary">Availability:</span>
+                                <span class="text-sm font-weight-bold ms-2" id="modalAvailability"></span>
+                            </li>
+                            <li class="list-group-item px-0">
+                                <span class="text-sm text-secondary">Skills:</span>
+                                <span class="text-sm font-weight-bold ms-2" id="modalSkills"></span>
+                            </li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" id="editVolunteerBtn">
+                    <i class="fas fa-edit me-2"></i>Edit Volunteer
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Delete Volunteer Modal -->
+<div class="modal fade" id="deleteVolunteerModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Delete Volunteer</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>Are you sure you want to delete this volunteer? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <form action="" method="post" id="deleteVolunteerForm">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize DataTable with export buttons
+    const table = $('table').DataTable({
+        dom: 'Bfrtip',
+        buttons: [
+            {
+                text: '<i class="fas fa-download"></i> Export CSV',
+                className: 'btn btn-primary',
+                action: function(e, dt, node, config) {
+                    exportToCSV();
+                }
+            }
+        ],
+        pageLength: 10,
+        responsive: true,
+        ordering: true
+    });
+
+    // Filter functionality
+    const filterForm = document.getElementById('filterForm');
+    const resetButton = document.getElementById('resetFilters');
+
+    function applyFilters() {
+        const role = document.getElementById('roleFilter').value.toLowerCase();
+        const status = document.getElementById('statusFilter').value.toLowerCase();
+        const search = document.getElementById('search').value.toLowerCase();
+
+        document.querySelectorAll('tbody tr').forEach(row => {
+            const roleText = row.querySelector('td:nth-child(2)').textContent.toLowerCase();
+            const statusText = row.querySelector('td:nth-child(5)').textContent.toLowerCase();
+            const searchText = row.textContent.toLowerCase();
+
+            const roleMatch = !role || roleText.includes(role);
+            const statusMatch = !status || statusText.includes(status);
+            const searchMatch = !search || searchText.includes(search);
+
+            row.style.display = roleMatch && statusMatch && searchMatch ? '' : 'none';
+        });
+    }
+
+    ['roleFilter', 'statusFilter', 'search'].forEach(id => {
+        document.getElementById(id).addEventListener('change', applyFilters);
+        document.getElementById(id).addEventListener('keyup', applyFilters);
+    });
+
+    resetButton.addEventListener('click', () => {
+        filterForm.reset();
+        applyFilters();
+    });
+
+    // Export functionality
+    function exportToCSV() {
+        let csvContent = "data:text/csv;charset=utf-8,";
+        
+        // Add headers
+        const headers = ['Name', 'Role', 'Contact', 'Availability', 'Status', 'Date'];
+        csvContent += headers.join(',') + '\n';
+        
+        // Get visible rows from DataTable
+        const visibleRows = table.rows({ search: 'applied' }).data();
+        
+        // Add data rows
+        visibleRows.each(function(row) {
+            const rowData = [
+                $(row[0]).text().trim(),
+                row[1].trim(),
+                $(row[2]).text().trim(),
+                row[3].trim(),
+                $(row[4]).text().trim(),
+                $(row[5]).text().trim()
+            ];
+            csvContent += rowData.join(',') + '\n';
+        });
+        
+        // Create download link
+        const encodedUri = encodeURI(csvContent);
+        const link = document.createElement('a');
+        link.setAttribute('href', encodedUri);
+        link.setAttribute('download', 'volunteers.csv');
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    // Initialize Bootstrap tooltips and popovers
+    $('[data-bs-toggle="tooltip"]').tooltip();
+    $('[data-bs-toggle="popover"]').popover();
+
+    // Modal functionality
+    const volunteerDetailsModal = document.getElementById('volunteerDetailsModal');
+    if (volunteerDetailsModal) {
+        volunteerDetailsModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const volunteerId = button.getAttribute('data-volunteer-id');
+            
+            // Here you would typically fetch the volunteer details from your backend
+            // For now, we'll use dummy data
+            const volunteerData = {
+                fullName: button.closest('tr').querySelector('h6').textContent,
+                email: button.closest('tr').querySelector('td:nth-child(3) p:first-child').textContent,
+                phone: button.closest('tr').querySelector('td:nth-child(3) p:last-child').textContent,
+                role: button.closest('tr').querySelector('td:nth-child(2)').textContent,
+                status: button.closest('tr').querySelector('td:nth-child(5) span').textContent,
+                availability: button.closest('tr').querySelector('td:nth-child(4)').textContent
+            };
+
+            // Update modal content
+            document.getElementById('modalFullName').textContent = volunteerData.fullName;
+            document.getElementById('modalEmail').textContent = volunteerData.email;
+            document.getElementById('modalPhone').textContent = volunteerData.phone;
+            document.getElementById('modalRole').textContent = volunteerData.role;
+            document.getElementById('modalStatus').textContent = volunteerData.status;
+            document.getElementById('modalAvailability').textContent = volunteerData.availability;
+        });
+    }
+
+    // Delete functionality
+    const deleteVolunteerModal = document.getElementById('deleteVolunteerModal');
+    if (deleteVolunteerModal) {
+        deleteVolunteerModal.addEventListener('show.bs.modal', function(event) {
+            const button = event.relatedTarget;
+            const volunteerId = button.getAttribute('data-volunteer-id');
+            const form = document.getElementById('deleteVolunteerForm');
+            form.action = `/delete-volunteer/${volunteerId}/`;
+        });
+    }
+});
+</script>
+{% endblock %}

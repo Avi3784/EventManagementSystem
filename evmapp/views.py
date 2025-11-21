@@ -6,6 +6,7 @@ import razorpay
 import qrcode
 from io import BytesIO
 from urllib.parse import quote_plus
+from django.core.paginator import Paginator, PageNotAnInteger, EmptyPage
 from django.core.mail import EmailMessage
 from django.shortcuts import render, redirect
 from decimal import Decimal, InvalidOperation
@@ -19,7 +20,7 @@ from datetime import datetime, timedelta
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 from django.http import HttpResponse, JsonResponse
-from django.db.models import Sum, F, Min, Count
+from django.db.models import Sum, F, Min, Count, Q
 from django.db import transaction
 from twilio.rest import Client
 from django.shortcuts import render, get_object_or_404
@@ -262,31 +263,51 @@ def send_booking_confirmation_email(booking):
             note = getattr(settings, 'UPI_NOTE', '') or event.event_name
             upi_uri = f"upi://pay?pa={settings.UPI_VPA}&pn={quote_plus(getattr(settings, 'UPI_NAME', ''))}&am={booking.total_cost}&cu=INR&tn={quote_plus(note)}"
             context['upi_uri'] = upi_uri
-    except Exception:
+    except Exception as e:
+        print(f"Error generating UPI URI: {str(e)}")
         upi_uri = None
 
-    message = render_to_string('evmapp/email/booking_confirmation.html', context)
-
-    # Use EmailMessage so we can attach the UPI QR image
-    email = EmailMessage(subject, message, settings.DEFAULT_FROM_EMAIL, [booking.email])
-    email.content_subtype = 'html'
-
-    # Attach server-side generated UPI QR PNG for convenience
-    if upi_uri:
-        try:
-            qr_img = qrcode.make(upi_uri)
-            buf = BytesIO()
-            qr_img.save(buf, format='PNG')
-            buf.seek(0)
-            email.attach(f'upi_{booking.id}.png', buf.read(), 'image/png')
-        except Exception as e:
-            # Log and continue without blocking email
-            print(f"Failed to generate/attach UPI QR: {e}")
+    try:
+        # Render the email template
+        message = render_to_string('evmapp/email/booking_confirmation.html', context)
+    except Exception as template_error:
+        print(f"Error rendering booking confirmation template: {str(template_error)}")
+        print(f"Context: {context}")
+        return False
 
     try:
+        # Create EmailMessage object
+        email = EmailMessage(
+            subject=subject,
+            body=message,
+            from_email=settings.DEFAULT_FROM_EMAIL,
+            to=[booking.email],
+            reply_to=[settings.DEFAULT_FROM_EMAIL],
+        )
+        email.content_subtype = "html"  # Main content is now text/html
+
+        # Attach UPI QR code if available
+        if upi_uri:
+            try:
+                qr_img = qrcode.make(upi_uri)
+                buf = BytesIO()
+                qr_img.save(buf, format='PNG')
+                buf.seek(0)
+                email.attach(f'upi_{booking.id}.png', buf.read(), 'image/png')
+            except Exception as qr_error:
+                print(f"Failed to generate/attach UPI QR: {str(qr_error)}")
+
+        # Send the email
+        print(f"Attempting to send email to {booking.email}...")
+        print(f"SMTP Settings: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, USER={settings.EMAIL_HOST_USER}")
         email.send(fail_silently=False)
+        print(f"Successfully sent booking confirmation email to {booking.email}")
+        return True
+
     except Exception as e:
-        print(f"Failed to send booking confirmation email: {e}")
+        print(f"Failed to send booking confirmation email to {booking.email}")
+        print(f"Error: {str(e)}")
+        return False
 
 def send_event_reminder_email(booking, hours_remaining=24):
     """Send event reminder email with time-specific information"""
@@ -730,42 +751,174 @@ def download_participants_csv(request):
 
 def add_volunteer(request):
     if request.method == 'POST':
-        # Extract data from the request
-        name = request.POST.get('name')
-        contact_number = request.POST.get('contact_number')
-        email = request.POST.get('email')
-        flat_number = request.POST.get('flat_number')
-        skills_interests = request.POST.get('skills_interests')
-        previous_experience = request.POST.get('previous_experience')
-        availability_period = request.POST.get('availability_period')
-        volunteer_role = request.POST.get('volunteer_role')
-        emergency_contact = request.POST.get('emergency_contact')
+        try:
+            # Extract data from the request
+            first_name = request.POST.get('first_name')
+            last_name = request.POST.get('last_name')
+            email = request.POST.get('email')
+            phone = request.POST.get('phone')
+            address = request.POST.get('address')
+            city = request.POST.get('city')
+            state = request.POST.get('state')
+            volunteer_role = request.POST.get('volunteer_role')
+            skills = request.POST.get('skills')
+            availability = request.POST.getlist('availability[]')
 
-        # Create a new Volunteer object with the extracted data
-        new_volunteer = Volunteer.objects.create(
-            name=name,
-            contact_number=contact_number,
-            email=email,
-            flat_number=flat_number,
-            skills_interests=skills_interests,
-            previous_experience=previous_experience,
-            availability_period=availability_period,
-            volunteer_role=volunteer_role,
-            emergency_contact=emergency_contact
-        )
+            if not all([first_name, last_name, email, phone, address, city, state, volunteer_role]):
+                messages.error(request, 'Please fill in all required fields.')
+                return redirect('add_volunteer')
 
-        # Optionally, you can perform additional actions here, such as sending a confirmation email
+            # Normalize phone number
+            phone = phone.replace('-', '').strip()
+            if not phone.startswith('+91'):
+                phone = f'+91{phone}'
 
-        # Redirect to a success page or home page
-        messages.success(request, 'Your Volunteer Form was Submitted Successfully, Our team will be reaching out to you soon!!')
-        return redirect(home)
-    
-    return render(request, 'evmapp/add_volunteer.html')
+            # Create a new Volunteer object
+            new_volunteer = Volunteer.objects.create(
+                first_name=first_name,
+                last_name=last_name,
+                email=email,
+                phone=phone,
+                address=address,
+                city=city,
+                state=state,
+                volunteer_role=volunteer_role,
+                skills=skills,
+                availability=availability,
+                status='Pending'  # Initial status
+            )
+
+            # Send confirmation email
+            try:
+                subject = 'Volunteer Application Received'
+                context = {
+                    'volunteer': new_volunteer,
+                    'roles_description': {
+                        'Event Coordinator': 'Lead and coordinate event activities',
+                        'Registration Desk': 'Handle attendee check-in and registration',
+                        'Technical Support': 'Provide technical assistance during events',
+                        'Guest Relations': 'Assist and guide event attendees',
+                        'Marketing': 'Help with event promotion and marketing',
+                        'Logistics': 'Manage event setup and logistics',
+                        'Security': 'Ensure event security and safety',
+                        'First Aid': 'Provide first aid and medical assistance',
+                        'Photography': 'Document event through photos and videos',
+                        'General': 'Assist with various event tasks'
+                    }
+                }
+                
+                # Render the email template
+                try:
+                    message = render_to_string('evmapp/email/volunteer_confirmation.html', context)
+                except Exception as template_error:
+                    print(f"Error rendering email template: {str(template_error)}")
+                    messages.error(request, 'Failed to generate confirmation email. Please contact support.')
+                    return redirect('home')
+                
+                # Attempt to send the email
+                try:
+                    email_message = EmailMessage(
+                        subject=subject,
+                        body=message,
+                        from_email=settings.DEFAULT_FROM_EMAIL,
+                        to=[email],
+                    )
+                    email_message.content_subtype = "html"  # Main content is now text/html
+                    email_message.send(fail_silently=False)
+                    print(f"Successfully sent confirmation email to {email}")
+                except Exception as email_error:
+                    print(f"Failed to send email: {str(email_error)}")
+                    print(f"SMTP Settings: HOST={settings.EMAIL_HOST}, PORT={settings.EMAIL_PORT}, USER={settings.EMAIL_HOST_USER}")
+                    messages.warning(request, 'Your application was received but there was an issue sending the confirmation email.')
+                    
+            except Exception as e:
+                print(f"Unexpected error in email sending process: {str(e)}")
+                messages.error(request, 'An error occurred while processing your application.')
+
+            messages.success(request, 'Thank you for your interest in volunteering! We will review your application and contact you soon.')
+            return redirect('home')
+
+        except Exception as e:
+            messages.error(request, f'An error occurred while submitting your application. Please try again.')
+            print(f"Volunteer application error: {str(e)}")
+            return redirect('add_volunteer')
+
+    return render(request, 'evmapp/volunteers/add.html')
 
 @login_required(login_url='/login/')
 def view_volunteers(request):
-    volunteers = Volunteer.objects.all()
-    return render(request, 'evmapp/view_volunteers.html', {'volunteers':volunteers})
+    # Get filter parameters
+    role = request.GET.get('role', '')
+    status = request.GET.get('status', '')
+    search = request.GET.get('search', '')
+
+    # Start with all volunteers
+    volunteers = Volunteer.objects.all().order_by('-created_at')
+
+    # Apply filters
+    if role:
+        volunteers = volunteers.filter(volunteer_role=role)
+    if status:
+        volunteers = volunteers.filter(status=status)
+    if search:
+        volunteers = volunteers.filter(
+            Q(first_name__icontains=search) |
+            Q(last_name__icontains=search) |
+            Q(email__icontains=search) |
+            Q(phone__icontains=search) |
+            Q(city__icontains=search)
+        )
+
+    # Get statistics
+    stats = {
+        'total': volunteers.count(),
+        'active': volunteers.filter(status='Active').count(),
+        'pending': volunteers.filter(status='Pending').count(),
+        'role_counts': dict(volunteers.values_list('volunteer_role').annotate(count=Count('id')))
+    }
+
+    # Pagination
+    paginator = Paginator(volunteers, 10)
+    page = request.GET.get('page')
+    try:
+        volunteers = paginator.page(page)
+    except PageNotAnInteger:
+        volunteers = paginator.page(1)
+    except EmptyPage:
+        volunteers = paginator.page(paginator.num_pages)
+
+    # Export functionality
+    if request.GET.get('export') == 'csv':
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = 'attachment; filename="volunteers.csv"'
+        writer = csv.writer(response)
+        
+        # Write headers
+        writer.writerow([
+            'First Name', 'Last Name', 'Email', 'Phone', 'Role',
+            'City', 'State', 'Status', 'Joined Date'
+        ])
+        
+        # Write data
+        for volunteer in volunteers:
+            writer.writerow([
+                volunteer.first_name,
+                volunteer.last_name,
+                volunteer.email,
+                volunteer.phone,
+                volunteer.volunteer_role,
+                volunteer.city,
+                volunteer.state,
+                volunteer.status,
+                volunteer.created_at.strftime('%Y-%m-%d')
+            ])
+        
+        return response
+
+    return render(request, 'evmapp/volunteers/list.html', {
+        'volunteers': volunteers,
+        'stats': stats,
+    })
 
 
 
